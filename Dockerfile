@@ -1,13 +1,20 @@
+# Stage 1: Build the application
+
+FROM maven:3.8.3-openjdk-17 AS build
+
+WORKDIR /app
+COPY . .
+
+RUN mvn clean package
+
+
+# Stage 2: Create a minimal image
+
 FROM eclipse-temurin:17-jdk-jammy
 
-# Set the working directory to /app
 WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 
-# Copy the pre-built JAR file into the container
-COPY target/*.jar app.jar
-
-# Expose the port the app runs on
 EXPOSE 8080
 
-# Run the jar file when the container starts
 CMD ["java", "-jar", "app.jar"]
