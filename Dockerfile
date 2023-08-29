@@ -1,20 +1,21 @@
-# Stage 1: Build the application
+# syntax=docker/dockerfile:1
 
-FROM maven:3.8.3-openjdk-17 AS build
-
+# Build the application
+FROM eclipse-temurin:17-jdk-jammy as base
 WORKDIR /app
-COPY . .
+COPY .mvn/ .mvn
+COPY mvnw pom.xml ./
+RUN ./mvnw dependency:resolve
+COPY src ./src
 
-RUN mvn clean package
+FROM base as development
+CMD ["./mvnw", "spring-boot:run", "-Dspring-boot.run.profiles=mysql", "-Dspring-boot.run.jvmArguments='-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8000'"]
 
+FROM base as build
+RUN ./mvnw package
 
-# Stage 2: Create a minimal image
-
-FROM eclipse-temurin:17-jdk-jammy
-
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
-
+# Create minimal image
+FROM eclipse-temurin:17-jre-jammy as production
 EXPOSE 8080
-
-CMD ["java", "-jar", "app.jar"]
+COPY --from=build /app/target/spring-petclinic-*.jar /spring-petclinic.jar
+CMD ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/spring-petclinic.jar"]
